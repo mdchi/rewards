@@ -1,19 +1,38 @@
 import os
 import time
 import datetime
+from zoneinfo import ZoneInfo
 import webbrowser
 import pyautogui
 
 URL = "https://margex.com/app/rewards-hub"
-INTERVAL_SECONDS = 6 * 60 * 60  # 6 horas (21600 segundos)
 WAIT_AFTER_OPEN = 15            # Segundos para esperar a que cargue la página
 WAIT_AFTER_CLAIM = 15           # Segundos a esperar antes de cerrar la ventana del navegador
 
 IMAGE_FILENAMES = ["claim.png", "claimdorado.png"]
+TZ_BSAS = ZoneInfo("America/Argentina/Buenos_Aires")
 
 
-def process_claim():
-    now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+def get_next_run_wait_seconds(clicked: bool):
+    now = datetime.datetime.now(TZ_BSAS)
+    if clicked:
+        # Próxima ejecución a las 21:15 hs horario Buenos Aires
+        target = now.replace(hour=21, minute=15, second=0, microsecond=0)
+        if now >= target:
+            target += datetime.timedelta(days=1)
+        wait_seconds = int((target - now).total_seconds())
+        reason = "Botón detectado. Próxima ejecución a las 21:15 hs (Buenos Aires)"
+    else:
+        # No se encontró el botón, reintentar en 6 horas
+        wait_seconds = 6 * 3600
+        target = now + datetime.timedelta(seconds=wait_seconds)
+        reason = "No se encontró ningún botón. Próxima ejecución en 6 horas"
+    
+    return wait_seconds, target, reason
+
+
+def process_claim() -> bool:
+    now_str = datetime.datetime.now(TZ_BSAS).strftime('%Y-%m-%d %H:%M:%S')
     print(f"\n[{now_str}] Abriendo la página en el navegador predeterminado del sistema...")
     
     # Abre la URL en el navegador predeterminado (Chrome, Edge, Firefox, etc.)
@@ -23,6 +42,7 @@ def process_claim():
     time.sleep(WAIT_AFTER_OPEN)
     
     images_found_on_disk = [img for img in IMAGE_FILENAMES if os.path.exists(os.path.join(os.getcwd(), img))]
+    clicked = False
     
     if not images_found_on_disk:
         print("=========================================================================")
@@ -35,7 +55,6 @@ def process_claim():
         print(f"   en la carpeta: {os.getcwd()}")
         print("=========================================================================\n")
     else:
-        clicked = False
         for img_name in IMAGE_FILENAMES:
             image_path = os.path.join(os.getcwd(), img_name)
             if not os.path.exists(image_path):
@@ -82,6 +101,8 @@ def process_claim():
     print("[CIERRE] Cerrando la ventana completa del navegador (Alt + F4)...")
     pyautogui.hotkey('alt', 'f4')
     print("[INFO] Navegador cerrado correctamente.")
+    
+    return clicked
 
 
 def main():
@@ -89,23 +110,26 @@ def main():
     print(" Bot de Reclamo Margex (Reconocimiento Visual de Imagen)")
     print("==========================================================")
     print("Requisitos: pip install pyautogui pillow opencv-python\n")
-    print("El proceso se ejecutará inmediatamente y se repetirá cada 6 horas.\n")
+    print("Si se detecta un botón: Próxima ejecución a las 21:15 hs (Horario BsAs).")
+    print("Si NO se detecta un botón: Próxima ejecución en 6 horas.\n")
     
     pyautogui.FAILSAFE = True
 
     while True:
-        process_claim()
-        next_run = datetime.datetime.now() + datetime.timedelta(seconds=INTERVAL_SECONDS)
-        print(f"\n[INFO] Próxima ejecución programada para: {next_run.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Esperando 6 horas ({INTERVAL_SECONDS} segundos)...")
+        clicked = process_claim()
+        wait_seconds, target, reason = get_next_run_wait_seconds(clicked)
         
-        for remaining in range(INTERVAL_SECONDS, 0, -1):
+        print(f"\n[INFO] {reason}")
+        print(f"[INFO] Próxima ejecución programada para: {target.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        for remaining in range(wait_seconds, 0, -1):
             hrs, remainder = divmod(remaining, 3600)
             mins, secs = divmod(remainder, 60)
-            print(f"\r[CONTADOR REGRESIVO] Tiempo restante: {remaining} s ({hrs:02d}:{mins:02d}:{secs:02d})", end="", flush=True)
+            print(f"\r[CONTADOR REGRESIVO] {hrs:02d}:{mins:02d}:{secs:02d}", end="", flush=True)
             time.sleep(1)
         print("\n")
 
 
 if __name__ == "__main__":
     main()
+
