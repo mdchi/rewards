@@ -11,6 +11,7 @@ WAIT_AFTER_CLAIM = 15           # Segundos a esperar antes de cerrar la ventana 
 
 IMAGE_FILENAMES = ["claim.png", "claimdorado.png"]
 TZ_BSAS = ZoneInfo("America/Argentina/Buenos_Aires")
+EXITO_TAG = "[\033[42;1;97m ÉXITO \033[0m]"
 
 
 def get_next_run_wait_seconds(clicked: bool):
@@ -21,14 +22,14 @@ def get_next_run_wait_seconds(clicked: bool):
         if now >= target:
             target += datetime.timedelta(days=1)
         wait_seconds = int((target - now).total_seconds())
-        reason = "Botón detectado. Próxima ejecución a las 21:15 hs (Buenos Aires)"
+        status_msg = "Botón detectado."
     else:
         # No se encontró el botón, reintentar en 6 horas
         wait_seconds = 6 * 3600
         target = now + datetime.timedelta(seconds=wait_seconds)
-        reason = "No se encontró ningún botón. Próxima ejecución en 6 horas"
+        status_msg = "No se encontró ningún botón."
     
-    return wait_seconds, target, reason
+    return wait_seconds, target, status_msg
 
 
 def process_claim() -> bool:
@@ -66,7 +67,7 @@ def process_claim() -> bool:
                 # Intenta encontrar las coordenadas del centro del botón en la pantalla
                 location = pyautogui.locateCenterOnScreen(image_path, confidence=0.8)
                 if location:
-                    print(f"[ÉXITO] ¡Botón detectado visualmente con '{img_name}' en pantalla (X: {location.x}, Y: {location.y})!")
+                    print(f"{EXITO_TAG} ¡Botón detectado visualmente con '{img_name}' en pantalla (X: {location.x}, Y: {location.y})!")
                     pyautogui.moveTo(location.x, location.y, duration=0.5)
                     pyautogui.click()
                     time.sleep(0.3)
@@ -81,7 +82,7 @@ def process_claim() -> bool:
                 try:
                     location = pyautogui.locateCenterOnScreen(image_path)
                     if location:
-                        print(f"[ÉXITO] ¡Botón localizado con '{img_name}' en pantalla (X: {location.x}, Y: {location.y})!")
+                        print(f"{EXITO_TAG} ¡Botón localizado con '{img_name}' en pantalla (X: {location.x}, Y: {location.y})!")
                         pyautogui.click(location.x, location.y)
                         print("[INFO] Clic efectuado.")
                         clicked = True
@@ -106,6 +107,7 @@ def process_claim() -> bool:
 
 
 def main():
+    os.system('')  # Habilita el soporte de colores ANSI en la consola de Windows
     print("==========================================================")
     print(" Bot de Reclamo Margex (Reconocimiento Visual de Imagen)")
     print("==========================================================")
@@ -117,19 +119,22 @@ def main():
 
     while True:
         clicked = process_claim()
-        wait_seconds, target, reason = get_next_run_wait_seconds(clicked)
-        
-        print(f"\n[INFO] {reason}")
-        print(f"[INFO] Próxima ejecución programada para: {target.strftime('%Y-%m-%d %H:%M:%S')}")
+        wait_seconds, target, status_msg = get_next_run_wait_seconds(clicked)
+        target_str = target.strftime('%Y-%m-%d %H:%M:%S')
         
         for remaining in range(wait_seconds, 0, -1):
             hrs, remainder = divmod(remaining, 3600)
             mins, secs = divmod(remainder, 60)
-            print(f"\r[CONTADOR REGRESIVO] {hrs:02d}:{mins:02d}:{secs:02d}", end="", flush=True)
+            print(
+                f"\r[INFO] {status_msg} Próxima ejecución: {target_str} (Buenos Aires) | Contador regresivo: {hrs:02d}:{mins:02d}:{secs:02d}",
+                end="",
+                flush=True
+            )
             time.sleep(1)
         print("\n")
 
 
 if __name__ == "__main__":
     main()
+
 
