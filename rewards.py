@@ -12,6 +12,7 @@ WAIT_AFTER_CLAIM = 15           # Segundos a esperar antes de cerrar la ventana 
 IMAGE_FILENAMES = ["claim.png", "claimdorado.png"]
 TZ_BSAS = ZoneInfo("America/Argentina/Buenos_Aires")
 EXITO_TAG = "[\033[42;1;97m ÉXITO \033[0m]"
+ERROR_TAG = "[\033[41;1;97m ERROR \033[0m]"
 
 
 def get_next_run_wait_seconds(clicked: bool):
@@ -90,7 +91,7 @@ def process_claim() -> bool:
                     else:
                         print(f"[ALERTA] No se encontró coincidencia visual en pantalla para '{img_name}'.")
                 except Exception as ex:
-                    print(f"[ERROR] Error al buscar la imagen '{img_name}': {ex}")
+                    print(f"{ERROR_TAG} Error al buscar la imagen '{img_name}': {ex}")
                     print("Se recomienda instalar opencv-python: pip install opencv-python pillow")
 
         if not clicked:
